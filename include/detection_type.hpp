@@ -18,9 +18,9 @@ class DetectionObj
                const InIterT& label_conf_beg,
                const InIterT& label_conf_end);
   ConfT conf() const;
-  int max_label_idx() const;
-  const std::vector<ConfT> label_conf() const;
-  ConfT label_conf(int label_idx) const;
+  int max_class_idx() const;
+  const std::vector<ConfT> class_conf() const;
+  ConfT class_conf(int label_idx) const;
   void set_conf(ConfT conf);
   template <typename InIterT>
   void set_label_idx(const InIterT& label_conf_beg,
@@ -28,8 +28,8 @@ class DetectionObj
 
  private:
   ConfT conf_;
-  int max_label_idx_;
-  std::vector<ConfT> label_conf_;
+  int max_class_idx_;
+  std::vector<ConfT> class_conf_;
 };
 
 template <typename ConfT, typename CoordT>

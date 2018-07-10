@@ -1,8 +1,6 @@
 #ifndef TLR_DETECTION_FRAMEWORK_CAFFE_WRAPPER_HPP_
 #define TLR_DETECTION_FRAMEWORK_CAFFE_WRAPPER_HPP_
 
-#include "dnn_wrapper.hpp"
-
 #include "caffe/caffe.hpp"
 
 #include <memory>
@@ -89,7 +87,7 @@ void CaffeWrapper<double>::set_input(int idx, const cv::Mat& mat) {
 
 template <typename Dtype>
 void CaffeWrapper<Dtype>::set_input(int idx, const cv::Mat& mat) {
-  LOG(FATAL) << "Not implemented for CaffeWrapper<" << typeid(Dtype) << ">.";
+  LOG(FATAL) << "Not implemented for CaffeWrapper<" << typeid(Dtype).name() << ">.";
 }
 
 template <typename Dtype>
