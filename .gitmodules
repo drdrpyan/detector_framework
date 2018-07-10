@@ -1,3 +1,0 @@
-[submodule "extern/dnn_wrapper"]
-	path = extern/dnn_wrapper
-	url = https://github.com/drdrpyan/dnn_wrapper.git
