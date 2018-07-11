@@ -15,13 +15,15 @@ namespace bgm
 template <typename Dtype>
 class YOLOV2CaffeDetector : public Detector<DetectionRect<Dtype, Dtype> >
 {
+  typedef DetectionRect<Dtype, Dtype> CaffeDetectionT;
+
  public:
  protected:
-  template <typename OutIterT>
-  virtual void Detect_impl(const cv::Mat& img, OutIterT& out_beg);
-  template <typename InIterT, typename OutIterT>
-  virtual void Detect_impl(const InIterT& img_beg, const InIterT& img_end,
-                           OutIterT& out_beg);
+  virtual void Detect_impl(const cv::Mat& img, 
+                           std::vector<CaffeDetectionT>* result) override;
+  virtual void Detect_impl(
+      const std::vector<cv::Mat>& imgs,
+      std::vector<std::vector<CaffeDetectionT> >* result) override;
 
  private:
   std::shared_ptr<CaffeWrapper<Dtype> > caffe_;
@@ -31,18 +33,20 @@ class YOLOV2CaffeDetector : public Detector<DetectionRect<Dtype, Dtype> >
 
 // template fuctions
 template <typename Dtype>
-template <typename OutIterT>
 inline void YOLOV2CaffeDetector<Dtype>::Detect_impl(
-    const cv::Mat& img, OutIterT& out_beg) {
+    const cv::Mat& img, std::vector<CaffeDetectionT>* result) {
   caffe_->set_input(0, img);
   caffe_->Process();
-  caffe_decoder_->Decode(caffe_->output(0), out_beg);
+  caffe_decoder_->Decode(caffe_->output(0), result);
 }
 
-template <typename InIterT, typename OutIterT>
+template <typename Dtype>
 void YOLOV2CaffeDetector<Dtype>::Detect_impl(
-    const InIterT& img_beg, const InIterT& img_end, OutIterT& out_beg) {
-
+    const std::vector<cv::Mat>& imgs,
+    std::vector<std::vector<CaffeDetectionT> >* result) {
+  caffe_->set_input(0, imgs);
+  caffe_->Process();
+  caffe_decoder_->Decode(caffe_->output(0), result);
 }
 
 

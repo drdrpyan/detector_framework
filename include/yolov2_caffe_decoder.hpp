@@ -14,11 +14,14 @@ namespace bgm
 template <typename Dtype>
 class YOLOv2CaffeDecoder
 {
+  typedef DetectionRect<Dtype, Dtype> CaffeDetectionT;
+
  public:
   YOLOv2CaffeDecoder();
-  template <typename OutIterT>
   void Decode(const caffe::Blob<Dtype>& yolov2_out,
-              OutIterT& out_begin) const;
+              std::vector<CaffeDetectionT>* result) const;
+  void Decode(const caffe::Blob<Dtype>& yolov2_out,
+              std::vector<std::vector<CaffeDetectionT> >* result) const;
 
   void SetDecodeOrder(int bbox_conf, int label_conf, int bbox);
 
@@ -130,13 +133,24 @@ void YOLOv2CaffeDecoder<Dtype>::SetDecodeOrder(int bbox_conf,
 }
 
 template <typename Dtype>
-template <typename OutIterT>
-void YOLOv2CaffeDecoder<Dtype>::Decode(const caffe::Blob<Dtype>& yolov2_out,
-                               OutIterT& out_begin) const {
+inline void YOLOv2CaffeDecoder<Dtype>::Decode(
+    const caffe::Blob<Dtype>& yolov2_out,
+    std::vector<CaffeDetectionT>* result) const {
+  CHECK_EQ(yolov2_out.num(), 1);
+  std::vector<std::vector<CaffeDetectionT> > temp_result(1);
+  Decode(yolov2_out, &temp_result);
+  result->assign(temp_result[0].cbegin(), temp_result[0].cend());
+}
+
+template <typename Dtype>
+void YOLOv2CaffeDecoder<Dtype>::Decode(
+    const caffe::Blob<Dtype>& yolov2_out,
+    std::vector<std::vector<CaffeDetectionT> >* result) const {
   CHECK_EQ(anchor_box_.size(), anchor_weight_())
     << "(# of anchor box) is not equal to (# of anchor box weight)";
   CHECK_EQ((5 + num_class_) * anchor_box_.size(), yolov2_out.channels())
     << "channel of YOLOv2 output is not (5+#class)*(# anchor box)";
+  CHECK(result);
   
   const int NUM_BATCH = yolov2_out.num();
   const int BATCH_STEP = yolov2_out.count(1);
@@ -145,14 +159,13 @@ void YOLOv2CaffeDecoder<Dtype>::Decode(const caffe::Blob<Dtype>& yolov2_out,
   const int CH_STEP = IN_WIDTH * IN_HEIGHT;
   const int ANCHOR_STEP = CH_STEP * (5 + num_class_);
 
-  auto out_iter = out_begin;
-  const Dtype* batch_iter = yolov2_out.cpu_data();
+  result->resize(yolov2_out.num());
+  auto result_batch_iter = result->begin();
+  const Dtype* blob_batch_data_iter = yolov2_out.cpu_data();
 
   for (int i = 0; i < NUM_BATCH; ++i) {
-    //out_iter->clear();
-    //auto out_batch_iter = std::back_inserter((*out_iter++));
-    auto out_batch_iter = (*out_iter++).begin();
-    const Dtype* cell_iter = batch_iter;
+    result_batch_iter->clear();
+    const Dtype* cell_iter = blob_batch_data_iter;
     for (int j = 0; j < IN_HEIGHT; ++j) {
       for (int k = 0; k < IN_WIDTH; ++k) {
         for (int l = 0; l < anchor_box_.size(); ++l) {
@@ -168,14 +181,63 @@ void YOLOv2CaffeDecoder<Dtype>::Decode(const caffe::Blob<Dtype>& yolov2_out,
                                                      class_conf.cbegin(),
                                                      class_conf.cend(),
                                                      bbox);
-          *out_batch_iter++ = detection_rect;
+          result_batch_iter->push_back(detection_rect);
         }
         ++cell_iter;
       }
     }
-    batch_iter += BATCH_STEP;
+    ++out_batch_iter;
+    blob_batch_data_iter += BATCH_STEP;
   }
 }
+
+//template <typename Dtype>
+//template <typename OutIterT>
+//void YOLOv2CaffeDecoder<Dtype>::Decode(const caffe::Blob<Dtype>& yolov2_out,
+//                               OutIterT& out_begin) const {
+//  CHECK_EQ(anchor_box_.size(), anchor_weight_())
+//    << "(# of anchor box) is not equal to (# of anchor box weight)";
+//  CHECK_EQ((5 + num_class_) * anchor_box_.size(), yolov2_out.channels())
+//    << "channel of YOLOv2 output is not (5+#class)*(# anchor box)";
+//  
+//  const int NUM_BATCH = yolov2_out.num();
+//  const int BATCH_STEP = yolov2_out.count(1);
+//  const int IN_WIDTH = yolov2_out.width();
+//  const int IN_HEIGHT = yolov2_out.height();
+//  const int CH_STEP = IN_WIDTH * IN_HEIGHT;
+//  const int ANCHOR_STEP = CH_STEP * (5 + num_class_);
+//
+//  auto out_iter = out_begin;
+//  const Dtype* batch_iter = yolov2_out.cpu_data();
+//
+//  for (int i = 0; i < NUM_BATCH; ++i) {
+//    //out_iter->clear();
+//    //auto out_batch_iter = std::back_inserter((*out_iter++));
+//    auto out_batch_iter = (*out_iter++).begin();
+//    const Dtype* cell_iter = batch_iter;
+//    for (int j = 0; j < IN_HEIGHT; ++j) {
+//      for (int k = 0; k < IN_WIDTH; ++k) {
+//        for (int l = 0; l < anchor_box_.size(); ++l) {
+//          Dtype conf = DecodeConf(cell_iter, l, CH_STEP);
+//          conf *= anchor_weight_[l];
+//
+//          cv::Rect_<Dtype> bbox = DecodeBBox(cell_iter, l, CH_STEP,
+//                                             k, j);
+//          std::vector<Dtype> class_conf(num_class_);
+//          DecodeClassConf(cell_iter, l, CH_STEP, class_conf.begin());
+//
+//          DetectionRect<Dtype, Dtype> detection_rect(conf,
+//                                                     class_conf.cbegin(),
+//                                                     class_conf.cend(),
+//                                                     bbox);
+//          *out_batch_iter++ = detection_rect;
+//        }
+//        ++cell_iter;
+//      }
+//    }
+//    batch_iter += BATCH_STEP;
+//  }
+//}
 
 //template <typename Dtype>
 //void YOLOv2CaffeDecoder<Dtype>::DecodeBBoxConf(

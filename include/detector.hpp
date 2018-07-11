@@ -17,12 +17,10 @@ template <typename DetectionT>
 class Detector
 {
  public:
-  template <typename OutIterT>
-  void Detect(const cv::Mat& img, OutIterT& out_beg,
-              bool do_nms = true);
-  template <typename InIterT, typename OutIterT>
-  void Detect(const InIterT& img_beg, const InIterT& img_end,
-              OutIterT& out_beg, bool do_nms = true);
+  void Detect(const cv::Mat& img, bool do_nms,
+              std::vector<DetectionT>* result);
+  void Detect(const std::vector<cv::Mat>& imgs, bool do_nms,
+              std::vector<std::vector<DetectionT> >* result);
   //template <typename InIterT, typename OutIterT>
   //void DetectFromROIs(const cv::Mat& img,
   //                    const InIterT& roi_beg, const InIterT& roi_end,
@@ -36,11 +34,11 @@ class Detector
   void set_nms(NMS<DetectionT>* nms);
 
  protected:
-  template <typename OutIterT>
-  virtual void Detect_impl(const cv::Mat& img, OutIterT& out_beg) = 0;
-  template <typename InIterT, typename OutIterT>
-  virtual void Detect_impl(const InIterT& img_beg, const InIterT& img_end,
-                           OutIterT& out_beg) = 0;
+  virtual void Detect_impl(const cv::Mat& img, 
+                           std::vector<DetectionT>* result) = 0;
+  virtual void Detect_impl(
+      const std::vector<cv::Mat>& imgs,
+      std::vector<std::vector<DetectionT> >* result) = 0;
 
  private:
   std::shared_ptr<NMS<DetectionT> > nms_;
@@ -48,41 +46,39 @@ class Detector
 
 // template fucntions
 template <typename DetectionT>
-template <typename OutIterT>
-void Detector<DetectionT>::Detect(const cv::Mat& img, OutIterT& out_beg,
-                                  bool do_nms) {
+void Detector<DetectionT>::Detect(
+    const cv::Mat& img, bool do_nms, std::vector<DetectionT>* result) {
+  assert(result);
+
   if (do_nms && nms_ != nullptr) {
     std::vector<DetectionT> temp_result;
-    Detect_impl(img, temp_result.begin());
-    nms_->nms(temp_result.begin(), temp_result.end(), out_beg);
+    Detect_impl(img, &temp_result);
+    nms_->nms(temp_result, result);
   }
   else {
-    Detect_impl(img, out_beg);
+    Detect_impl(img, result);
   }
 }
 
 template <typename DetectionT>
-template <typename InIterT, typename OutIterT>
 void Detector<DetectionT>::Detect(
-    const InIterT& img_beg, const InIterT& img_end,
-    OutIterT& out_beg, bool do_nms) {
-  assert(std::distance(img_beg, img_end) > 0);
+    const std::vector<cv::Mat>& imgs, bool do_nms,
+    std::vector<std::vector<DetectionT> >* result) {
+  assert(result);
 
   auto sub_iter = out_beg->begin();
 
   if (do_nms && nms_ != nullptr) {
     std::vector<std::vector<DetectionT> > temp_result;
-    Detect_impl(img_beg, img_end, temp_result.begin());
+    Detect_impl(imgs, temp_result);
     
-    auto sub_out_iter = out_beg->begin();
-    for (auto temp_iter = temp_result.cbegin();
-         temp_iter != temp_result.cend(); ++temp_iter) {
-      nms_->nms(temp_iter->cbegin(), temp_iter->cend(),
-                (sub_out_iter++)->begin());
+    result->resize(imgs.size());
+    for (int i = 0; i < temp_result.size(); ++i) {
+      nms_->nms(temp_result[i], &((*result)[i]));
     }
   }
   else {
-    Detect_impl(img_beg, img_end, out_beg);
+    Detect_impl(imgs, result);
   }
 }
 
