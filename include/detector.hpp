@@ -1,7 +1,7 @@
 #ifndef BGM_DETECTION_FRAMEWORK_DETECTOR_HPP_
 #define BGM_DETECTION_FRAMEWORK_DETECTOR_HPP_
 
-#include "nms.hpp"
+#include "detection_filter.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -17,43 +17,100 @@ template <typename DetectionT>
 class Detector
 {
  public:
-  void Detect(const cv::Mat& img, bool do_nms,
+  Detector(bool do_filtering = false,
+           DetectionFilter<DetectionT>* filter = nullptr);
+
+  template <typename OutIterT>
+  void Detect(const cv::Mat& img, OutIterT& result_beg);
+
+  template <typename OutIterT>
+  void Detect(const cv::Mat& img, bool do_filtering, OutIterT& result_beg);
+
+  template <typename InIterT, typename OutIterT>
+  void Detect(const InIterT& img_beg, const InIterT& img_end,
+              OutIterT& result_beg);
+
+  template <typename InIterT, typename OutIterT>
+  void Detect(const InIterT& img_beg, const InIterT& img_end,
+              bool do_nms, OutIterT& result_beg);
+
+  void Detect(const cv::Mat& img, bool do_filtering,
               std::vector<DetectionT>* result);
-  void Detect(const std::vector<cv::Mat>& imgs, bool do_nms,
+  void Detect(const std::vector<cv::Mat>& imgs, bool do_filtering,
               std::vector<std::vector<DetectionT> >* result);
-  //template <typename InIterT, typename OutIterT>
-  //void DetectFromROIs(const cv::Mat& img,
-  //                    const InIterT& roi_beg, const InIterT& roi_end,
-  //                    OutIterT& out_beg, bool do_nms = true);
-  //template <typename InImgIterT, typename InOffsetIterT, typename OutIterT>
-  //void DetectFromROIs(const InImgIterT& img_roi_beg,
-  //                    const InImgIterT& img_roi_end,
-  //                    const InOffsetIterT& offset_beg,
-  //                    const InOffsetIterT& offset_end,
-  //                    OutIterT& out_beg, bool do_nms = true);
-  void set_nms(NMS<DetectionT>* nms);
+
+  void set_do_filtering(bool on);
+  void set_filter(std::shared_ptr<DetectionFilter<DetectionT> >& filter);
+  void set_filter(DetectionFilter<DetectionT>* filter);
 
  protected:
-  virtual void Detect_impl(const cv::Mat& img, 
+  virtual void Detect_impl(const cv::Mat& img,
                            std::vector<DetectionT>* result) = 0;
   virtual void Detect_impl(
-      const std::vector<cv::Mat>& imgs,
-      std::vector<std::vector<DetectionT> >* result) = 0;
+    const std::vector<cv::Mat>& imgs,
+    std::vector<std::vector<DetectionT> >* result) = 0;
 
  private:
-  std::shared_ptr<NMS<DetectionT> > nms_;
+  bool do_filtering_;
+  std::shared_ptr<DetectionFilter<DetectionT> > filter_;
 };
 
 // template fucntions
 template <typename DetectionT>
+inline Detector<DetectionT>::Detector(
+    bool do_filtering, DetectionFilter<DetectionT>* filter) 
+  : do_filtering_(do_filtering), filter_(filter) {
+
+}
+
+
+template <typename DetectionT>
+template <typename OutIterT>
+inline void Detector<DetectionT>::Detect(const cv::Mat& img,
+                                         OutIterT& result_beg) {
+  Detect(img, do_filtering_, result_beg);
+}
+
+template <typename DetectionT>
+template <typename OutIterT>
+inline void Detector<DetectionT>::Detect(const cv::Mat& img, 
+                                         bool do_filtering,
+                                         OutIterT& result_beg) {
+  std::vector<DetectionT> temp_result;
+  Detect(img, do_filtering, &temp_result);
+  std::copy(temp_result.cbegin(), temp_result.cend(), result_beg);
+}
+
+template <typename DetectionT>
+template <typename InIterT, typename OutIterT>
+inline void Detector<DetectionT>::Detect(const InIterT& img_beg,
+                                         const InIterT& img_end,
+                                         OutIterT& result_beg) {
+  Detect(img_beg, img_end, do_filtering_, result_beg);
+}
+
+template <typename DetectionT>
+template <typename InIterT, typename OutIterT>
+inline void Detector<DetectionT>::Detect(const InIterT& img_beg,
+                                         const InIterT& img_end,
+                                         bool do_filtering, 
+                                         OutIterT& result_beg) {
+  std::vector<cv::Mat> temp_in(img_beg, img_end);
+  std::vector<std::vector<DetectionT> > temp_out;
+  Detect(temp_in, do_filtering, &temp_out);
+  std::copy(temp_out.cbegin(), temp_out.cend(), result_beg);
+}
+
+template <typename DetectionT>
 void Detector<DetectionT>::Detect(
-    const cv::Mat& img, bool do_nms, std::vector<DetectionT>* result) {
+    const cv::Mat& img, bool do_filtering, 
+    std::vector<DetectionT>* result) {
   assert(result);
 
-  if (do_nms && nms_ != nullptr) {
+  if (do_filtering && filter_ != nullptr) {
     std::vector<DetectionT> temp_result;
     Detect_impl(img, &temp_result);
-    nms_->nms(temp_result, result);
+    filter_->Filter(temp_result, result);
   }
   else {
     Detect_impl(img, result);
@@ -62,17 +119,17 @@ void Detector<DetectionT>::Detect(
 
 template <typename DetectionT>
 void Detector<DetectionT>::Detect(
-    const std::vector<cv::Mat>& imgs, bool do_nms,
+    const std::vector<cv::Mat>& imgs, bool do_filtering,
     std::vector<std::vector<DetectionT> >* result) {
   assert(result);
 
-  if (do_nms && nms_ != nullptr) {
+  if (do_filtering && filter_ != nullptr) {
     std::vector<std::vector<DetectionT> > temp_result;
     Detect_impl(imgs, &temp_result);
     
     result->resize(imgs.size());
     for (int i = 0; i < temp_result.size(); ++i) {
-      nms_->nms(temp_result[i], &((*result)[i]));
+      filter_->Filter(temp_result[i], &((*result)[i]));
     }
   }
   else {
@@ -80,70 +137,22 @@ void Detector<DetectionT>::Detect(
   }
 }
 
-//template <typename DetectionT>
-//template <typename InIterT, typename OutIterT>
-//void Detector<DetectionT>::DetectFromROIs(const cv::Mat& img,
-//                                          const InIterT& roi_beg,
-//                                          const InIterT& roi_end,
-//                                          OutIterT& out_beg,
-//                                          bool do_nms) {
-//  assert(std::distance(roi_beg, roi_end) > 0);
-//
-//  std::vector<cv::Mat> extracted_rois;
-//  std::vector<cv::Point> offsets;
-//  for (auto roi_iter = roi_beg; roi_iter != roi_end; ++roi_iter) {
-//    extracted_rois.push_back(img(*roi_iter));
-//    offsets.push_back(roi_iter->tl());
-//  }
-//
-//  DetectFromROIs(extracted_rois.cbegin(), extracted_rois.cend(),
-//                 offsets.cbegin(), offsets.cend(), out_beg, do_nms);
-//
-//  
-//}
-
-//template <typename DetectionT>
-//template <typename InImgIterT, typename InOffsetIterT, typename OutIterT>
-//void Detector<DetectionT>::DetectFromROIs(const InImgIterT& img_roi_beg,
-//                                          const InImgIterT& img_roi_end,
-//                                          const InOffsetIterT& offset_beg,
-//                                          const InOffsetIterT& offset_end,
-//                                          OutIterT& out_beg, 
-//                                          bool do_nms) {
-//  int num_roi = std::distance(img_roi_beg, img_roi_end);
-//  assert(num_roi > 0);
-//  assert(std::distance(offset_beg, offset_end) == num_roi);
-//
-//  std::vector<std::vector<DetectionT> > temp_result;
-//  Detect_impl(extracted_rois.cbegin(), extracted_rois.cend(),
-//              temp_result.begin());
-//  for()
-//
-//  if (do_nms && nms_ != nullptr) {
-//    std::vector<DetectionT> temp_result_concat;
-//    for (auto iter = temp_result.cbegin();
-//         iter != temp_result.cend(); ++iter)
-//      temp_result_concat.insert(iter->cbegin(), iter->cend(),
-//                                temp_result_concat.end());
-//    nms_->nms(temp_result_concat.cbegin(), temp_result_concat.cend(),
-//              out_beg);
-//  }
-//  else {
-//    auto out_iter = out_beg;
-//    for (auto batch_iter = temp_result.cbegin();
-//         batch_iter != temp_result.cend(); ++batch_iter) {
-//      for (auto elem_iter = batch_iter->cbegin();
-//           elem_iter != batch_iter->cend(); ++eleom_iter) {
-//        *(out_iter++) = *elem_iter;
-//      }
-//    }
-//  }
-//}
-
 // inline functions
 template <typename DetectionT>
-inline void Detector<DetectionT>::set_nms(NMS<DetectionT>* nms) {
-  nms_->reset(nms);
+inline void Detector<DetectionT>::set_do_filtering(bool on) {
+  do_filtering_ = on;
+}
+
+template <typename DetectionT>
+inline void Detector<DetectionT>::set_filter(
+    std::shared_ptr<DetectionFilter<DetectionT> >& filter) {
+  filter_ = filter;
+}
+
+template <typename DetectionT>
+inline void Detector<DetectionT>::set_filter(
+    DetectionFilter<DetectionT>* filter) {
+  filter_->reset(filter);
 }
 
 
