@@ -13,6 +13,7 @@ class NMS
   virtual void DoNMS(const std::vector<DetectionT>& in,
                      std::vector<DetectionT>* out) = 0;
 };
+
 } // namespace bgm
 
 #endif // !BGM_DETECTION_FRAMEWORK_NMS_HPP_

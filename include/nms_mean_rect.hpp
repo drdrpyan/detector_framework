@@ -12,7 +12,6 @@ class NMSMeanRect : public NMSRect<ConfT, CoordT>
   typedef DetectionRect<ConfT, CoordT> DRect;
 
  public:
-  NMSMeanRect(float overlap_threshold 0.5f);
   virtual void DoNMS(const std::vector<DRect>& in,
                      std::vector<DRect>* out) override;
 };
