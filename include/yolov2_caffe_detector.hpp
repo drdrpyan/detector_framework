@@ -18,6 +18,14 @@ class YOLOV2CaffeDetector : public Detector<DetectionRect<Dtype, Dtype> >
   typedef DetectionRect<Dtype, Dtype> CaffeDetectionT;
 
  public:
+  YOLOV2CaffeDetector();
+  YOLOV2CaffeDetector(CaffeWrapper<Dtype>* caffe,
+                      YOLOv2CaffeDecoder<Dtype>* decoder,
+                      DetectionFilter<CaffeDetectionT>* filter = nullptr,
+                      bool do_filtering = false);
+  void set_caffe(CaffeWrapper<Dtype>* caffe);
+  void set_caffe_decoder(YOLOv2CaffeDecoder<Dtype>* decoder);
+
  protected:
   virtual void Detect_impl(const cv::Mat& img, 
                            std::vector<CaffeDetectionT>* result) override;
@@ -32,6 +40,32 @@ class YOLOV2CaffeDetector : public Detector<DetectionRect<Dtype, Dtype> >
 
 
 // template fuctions
+template <typename Dtype>
+inline YOLOV2CaffeDetector<Dtype>::YOLOV2CaffeDetector() {
+
+}
+
+template <typename Dtype>
+inline YOLOV2CaffeDetector<Dtype>::YOLOV2CaffeDetector(
+    CaffeWrapper<Dtype>* caffe, YOLOv2CaffeDecoder<Dtype>* decoder,
+    DetectionFilter<CaffeDetectionT>* filter, bool do_filtering) 
+  : Detector<CaffeDetectionT>(filter, do_filtering), 
+    caffe_(caffe), decoder_(decoder) {
+
+}
+
+template <typename Dtype>
+inline void YOLOV2CaffeDetector<Dtype>::set_caffe(
+    CaffeWrapper<Dtype>* caffe) {
+  caffe_.reset(caffe);
+}
+
+template <typename Dtype>
+inline void YOLOV2CaffeDetector<Dtype>::set_caffe_decoder(
+    YOLOv2CaffeDecoder<Dtype>* decoder) {
+  caffe_decoder_.reset(decoder);
+}
+
 template <typename Dtype>
 inline void YOLOV2CaffeDetector<Dtype>::Detect_impl(
     const cv::Mat& img, std::vector<CaffeDetectionT>* result) {

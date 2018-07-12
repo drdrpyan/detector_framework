@@ -18,6 +18,17 @@ class YOLOv2CaffeDecoder
 
  public:
   YOLOv2CaffeDecoder();
+
+  template <typename AnchorInIterT, typename AnchorWInIterT>
+  YOLOv2CaffeDecoder(int num_class,
+                     const AnchorInIterT& anchor_beg,
+                     const AnchorInIterT& anchor_end,
+                     const AnchorWInIterT& anchor_weight_beg,
+                     const AnchorWInIterT& anchor_weight_end,
+                     const cv::Size2f& grid_cell_size,
+                     int conf_ch = 4, int bbox_ch_beg = 0,
+                     int class_ch_beg = 5);
+
   void Decode(const caffe::Blob<Dtype>& yolov2_out,
               std::vector<CaffeDetectionT>* result) const;
   void Decode(const caffe::Blob<Dtype>& yolov2_out,
@@ -34,9 +45,10 @@ class YOLOv2CaffeDecoder
                          const InIterT& weight_end);
   void set_grid_cell_size(const cv::Size2f& grid_cell_size);
   void set_grid_cell_size(float width, float height);
-  template <typename InIterT>
-  void set_batch_offset(const InIterT& offset_begin,
-                        const InIterT& offset_end); 
+  //template <typename InIterT>
+  //void set_batch_offset(const InIterT& offset_begin,
+  //                      const InIterT& offset_end); 
+  void SetElemChannel(int conf_ch, int bbox_ch_beg, int class_ch_beg);
 
  private:
   Dtype DecodeConf(const Dtype* batch_begin, int anchor_idx,
@@ -54,7 +66,7 @@ class YOLOv2CaffeDecoder
   std::vector<cv::Rect_<Dtype> > anchor_box_;
   std::vector<float> anchor_weight_;
   cv::Size2f grid_cell_size_;
-  std::vector<cv::Point2f> batch_offset_;
+  //std::vector<cv::Point2f> batch_offset_;
   int conf_ch_;
   int bbox_ch_begin_;
   int class_ch_begin_;
@@ -97,12 +109,12 @@ inline void YOLOv2CaffeDecoder<Dtype>::set_grid_cell_size(
   grid_cell_size_.height = height;
 }
 
-template <typename Dtype>
-template <typename InIterT>
-inline void YOLOv2CaffeDecoder<Dtype>::set_batch_offset(
-    const InIterT& offset_begin, const InIterT& offset_end) {
-  batch_offset_.assign(offset_begin, offset_end);
-}
+//template <typename Dtype>
+//template <typename InIterT>
+//inline void YOLOv2CaffeDecoder<Dtype>::set_batch_offset(
+//    const InIterT& offset_begin, const InIterT& offset_end) {
+//  batch_offset_.assign(offset_begin, offset_end);
+//}
 
 // template functions
 //template <typename Dtype>
