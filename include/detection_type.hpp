@@ -37,6 +37,7 @@ class DetectionRect : public DetectionObj<ConfT>
 {
  public:
   DetectionRect();
+  template <typename InIterT>
   DetectionRect(ConfT conf,
                 const InIterT& label_conf_beg,
                 const InIterT& label_conf_end,

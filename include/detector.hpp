@@ -66,11 +66,9 @@ void Detector<DetectionT>::Detect(
     std::vector<std::vector<DetectionT> >* result) {
   assert(result);
 
-  auto sub_iter = out_beg->begin();
-
   if (do_nms && nms_ != nullptr) {
     std::vector<std::vector<DetectionT> > temp_result;
-    Detect_impl(imgs, temp_result);
+    Detect_impl(imgs, &temp_result);
     
     result->resize(imgs.size());
     for (int i = 0; i < temp_result.size(); ++i) {
