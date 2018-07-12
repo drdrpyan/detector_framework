@@ -10,8 +10,8 @@ template <typename DetectionT>
 class NMS
 {
  public:
-  virtual void nms(const std::vector<DetectionT>& in,
-                   std::vector<DetectionT>* out) = 0;
+  virtual void DoNMS(const std::vector<DetectionT>& in,
+                     std::vector<DetectionT>* out) = 0;
 };
 } // namespace bgm
 
