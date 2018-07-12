@@ -17,8 +17,8 @@ template <typename DetectionT>
 class Detector
 {
  public:
-  Detector(bool do_filtering = false,
-           DetectionFilter<DetectionT>* filter = nullptr);
+  Detector(DetectionFilter<DetectionT>* filter = nullptr,
+           bool do_filtering = false);
 
   template <typename OutIterT>
   void Detect(const cv::Mat& img, OutIterT& result_beg);
@@ -39,9 +39,9 @@ class Detector
   void Detect(const std::vector<cv::Mat>& imgs, bool do_filtering,
               std::vector<std::vector<DetectionT> >* result);
 
-  void set_do_filtering(bool on);
   void set_filter(std::shared_ptr<DetectionFilter<DetectionT> >& filter);
   void set_filter(DetectionFilter<DetectionT>* filter);
+  void set_do_filtering(bool on);
 
  protected:
   virtual void Detect_impl(const cv::Mat& img,
@@ -51,15 +51,15 @@ class Detector
     std::vector<std::vector<DetectionT> >* result) = 0;
 
  private:
-  bool do_filtering_;
   std::shared_ptr<DetectionFilter<DetectionT> > filter_;
+  bool do_filtering_;
 };
 
 // template fucntions
 template <typename DetectionT>
 inline Detector<DetectionT>::Detector(
-    bool do_filtering, DetectionFilter<DetectionT>* filter) 
-  : do_filtering_(do_filtering), filter_(filter) {
+    DetectionFilter<DetectionT>* filter, bool do_filtering) 
+  : filter_(filter), do_filtering_(do_filtering) {
 
 }
 
@@ -139,11 +139,6 @@ void Detector<DetectionT>::Detect(
 
 // inline functions
 template <typename DetectionT>
-inline void Detector<DetectionT>::set_do_filtering(bool on) {
-  do_filtering_ = on;
-}
-
-template <typename DetectionT>
 inline void Detector<DetectionT>::set_filter(
     std::shared_ptr<DetectionFilter<DetectionT> >& filter) {
   filter_ = filter;
@@ -155,6 +150,10 @@ inline void Detector<DetectionT>::set_filter(
   filter_->reset(filter);
 }
 
+template <typename DetectionT>
+inline void Detector<DetectionT>::set_do_filtering(bool on) {
+  do_filtering_ = on;
+}
 
 } // namespace bgm
 

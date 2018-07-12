@@ -9,7 +9,7 @@ namespace bgm
 template <typename DetectionT>
 class DetectionFilter
 {
- private:
+ public:
   virtual void Filter(const std::vector<DetectionT>& src,
                       std::vector<DetectionT>* dst) = 0;
 }; // class DetectionFilter
